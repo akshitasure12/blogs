@@ -57,25 +57,23 @@ The following algorithms have been identified as embarrassingly parallel and are
 
   Generate consistent heatmaps to visualize performance, consider alternatives like `time.perf_counter()` for high-resolution wall-clock timing (ref. [issue#51](https://github.com/networkx/nx-parallel/issues/51)).
 
----
-
 ## Project Timeline
 
-| **Period**                                                       | **Tasks** |
-|-------------------------------------------------------------------|-----------|
-| **Week 1**                                | - Implement the first algorithm. <br> - Conduct initial tests and performance benchmarks. <br> - Get feedback from mentors. |
-| **Week 2**        | - Add the suggestions recommended. <br> - Finish working on the first algorithm. <br> - Research and implement the second algorithm. |
-| **Week 3**      | - Conduct initial tests and performance benchmarks. <br> - Get feedback from mentors. |
-| **Week 4**       | - Add the respective recommendations. <br> - Finish working on the second algorithm. |
-| **Week 5**        | - Research and implement the third algorithm. <br> - Conduct initial tests and performance benchmarks. <br> - Get feedback and continue working on the third algorithm. |
-| **Week 6**        | - Finish working on the third algorithm. <br> - Buffer week for improvements and debugging. |
-| **Week 7** (Mid-Term Evaluation) | - Submit progress for mid-term evaluation. <br> - Research and implement the fourth algorithm. |
-| **Week 8**        | - Conduct initial tests and performance benchmarks. <br> - Get feedback and finish working on the fourth algorithm. |
-| **Week 9**      | - Research and implement the fifth algorithm. <br> - Conduct initial tests and performance benchmarks. |
-| **Week 10**   | - Get feedback and finish working on the fifth algorithm. <br> - Research and implement the sixth algorithm. <br> - Conduct initial tests and performance benchmarks. |
-| **Week 11**  | - Get feedback and finish working on the sixth algorithm. <br> - Buffer week for improvements and suggestions. |
-| **Week 12**  | - Research and implement the final algorithm. <br> - Conduct initial tests and performance benchmarks. <br> - Get a review and finish working on the seventh algorithm. |
-| **Final Evaluation**  | - Conduct final tests to verify the correctness and efficiency of all the algorithms, incorporating any final suggestions and recommendations. <br> - Create a final project report and submit it with all the work done for final review. |
+| **Period**                              | **Tasks** |
+|-----------------------------------------|-----------|
+| **Week 1** (June 2nd – June 8th)        | - Implement the first algorithm. <br> - Conduct initial tests and performance benchmarks. <br> - Get feedback from mentors. |
+| **Week 2** (June 9th – June 15th)       | - Add the suggestions recommended. <br> - Finish working on the first algorithm. <br> - Research and implement the second algorithm. |
+| **Week 3** (June 16th – June 22nd)      | - Conduct initial tests and performance benchmarks. <br> - Get feedback from mentors. |
+| **Week 4** (June 23rd – June 29th)      | - Add the respective recommendations. <br> - Finish working on the second algorithm. |
+| **Week 5** (June 30th – July 6th)       | - Research and implement the third algorithm. <br> - Conduct initial tests and performance benchmarks. <br> - Get feedback and continue working on the third algorithm. |
+| **Week 6** (July 7th – July 13th)       | - Finish working on the third algorithm. <br> - Buffer week for improvements and debugging. |
+| **Week 7** (Mid-Term Evaluation, July 14th – July 20th) | - Submit progress for mid-term evaluation. <br> - Research and implement the fourth algorithm. |
+| **Week 8** (July 21st – July 27th)      | - Conduct initial tests and performance benchmarks. <br> - Get feedback and finish working on the fourth algorithm. |
+| **Week 9** (July 28th – August 3rd)     | - Research and implement the fifth algorithm. <br> - Conduct initial tests and performance benchmarks. |
+| **Week 10** (August 4th – August 10th)  | - Get feedback and finish working on the fifth algorithm. <br> - Research and implement the sixth algorithm. <br> - Conduct initial tests and performance benchmarks. |
+| **Week 11** (August 11th – August 17th) | - Get feedback and finish working on the sixth algorithm. <br> - Buffer week for improvements and suggestions. |
+| **Week 12** (August 18th – August 24th) | - Research and implement the final algorithm. <br> - Conduct initial tests and performance benchmarks. <br> - Get a review and finish working on the seventh algorithm. |
+| **Final Evaluation** (August 25th – August 31st) | - Conduct final tests to verify the correctness and efficiency of all the algorithms, incorporating any final suggestions and recommendations. <br> - Create a final project report and submit it with all the work done for final review. |
 
 ## Why NetworkX?
 
