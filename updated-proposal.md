@@ -1,4 +1,4 @@
-# GSoC’25 Proposal NetworkX
+# GSoC’25 Proposal NetworkX - Adding embarrassingly parallel graph algorithms in nx-parallel
 
 ## Abstract
 
