@@ -57,6 +57,8 @@ The following algorithms have been identified as embarrassingly parallel and are
 
   Generate consistent heatmaps to visualize performance, consider alternatives like `time.perf_counter()` for high-resolution wall-clock timing (ref. [issue#51](https://github.com/networkx/nx-parallel/issues/51)).
 
+- Adding user guide tutorials for using nx-parallel.
+
 ## Project Timeline
 
 | **Period**                              | **Tasks** |
