@@ -6,76 +6,68 @@ This proposal aims to enhance the nx-parallel backend of NetworkX by implementin
 
 ## Deliverables
 
-The following algorithms have been identified as embarrassingly parallel and are scheduled for implementation :
-
-- [`triangles`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.cluster.triangles.html)
-  
-  Efficiently counts the number of triangles a node is part of. Parallelism is achievable as each node's triangle count can be computed independently. </br>
-  *Currently in progress* (ref. [PR#106](https://github.com/networkx/nx-parallel/pull/106))
-
-- [`harmonic_centrality`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.centrality.harmonic_centrality.html)
-
-  Measures the sum of the reciprocals of the shortest path distances from all other nodes to u. Computation of shortest paths from each of the source nodes is entirely independent of the others
-
-- [`closeness_centrality`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.centrality.closeness_centrality.html)
-
-  Measures how close a node is to all others. While requiring shortest paths, calculations for each node can be performed in parallel.
-
-- [`clustering`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.cluster.clustering.html#networkx.algorithms.cluster.clustering)
-
-  Computes the tendency of a node's neighbors to form triangles. It iterates over all nodes, computing triangle counts and degree values. Each of these computations for each node are fully independent of one another making it embarassingly parallel.
-
-- [`average_clustering`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.cluster.average_clustering.html)
-
-  Averages the clustering coefficients across all nodes. Can be derived from parallel node-level computations.
-
-- [`jaccard_coefficient`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.link_prediction.jaccard_coefficient.html)
-
-  Measures node similarity as the ratio of common to total neighbors. This coefficient is computed for given node pairs independently, making it embarrassingly parallel due to the lack of inter-pair dependencies.
-
-- [`average_neighbor_degree`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.link_prediction.jaccard_coefficient.html) 
-
-  Computes the mean degree of neighbors for each node. Since each node's average is computed independently based on its neighborhood,
-  the function is highly parallelizable. 
-
-## Optional Extensions (If Time Permits)
-
-- [`transitive_closure_dag`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.dag.transitive_closure_dag.html)
-
-  Computes reachability in directed acyclic graphs. The reachability from each node can be computed independently, so the operation is embarrassingly parallel.
-
-- [`eccentricity`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.distance_measures.eccentricity.html)
-
-  Measures the maximum shortest path length from a node to all others. Each node's eccentricity can be computed in isolation.
-
-- **Delta-Stepping**
-
-  A parallel single-source shortest paths (SSSP) algorithm, a variant of Dijkstra's algorithm, maintaining buckets representing priority ranges of size Δ. </br>
-  *See:* https://www.cs.utexas.edu/~pingali/CS395T/2013fa/papers/delta-stepping.pdf
+The following algorithms have been identified as embarrassingly parallel and are scheduled for implementation
 
 - **Updating timing script**
 
-  Generate consistent heatmaps to visualize performance, consider alternatives like `time.perf_counter()` for high-resolution wall-clock timing (ref. [issue#51](https://github.com/networkx/nx-parallel/issues/51)).
+  Generate consistent heatmaps to visualize performance, and explore shared memory strategies to improve efficiency during parallel execution. (ref. [PR#114](https://github.com/networkx/nx-parallel/pull/114)). 
 
-- Adding user guide tutorials for using nx-parallel.
+- [`number_attracting_components`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.components.number_attracting_components.html), [`number_connected_components`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.components.number_connected_components.html), [`number_strongly_connected_components`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.components.number_strongly_connected_components.html), [`number_weakly_connected_components`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.components.number_weakly_connected_components.html)
+
+  The parallelisation approach for these functions mirrors that of `number_of_isolates`. Rather than parallelising the internal logic of itself — which remains sequential — we parallelise the counting step after obtaining the list of attracting components. Since each component is independent, the counting can be parallelised but the processing time of each chunk would be small (only the sum would be computed for each chunk), so chunking would not yield any speedups. Adding a `should_run` parameter here would be beneficial for this reason.
+
+- [`triangles`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.cluster.triangles.html)
+  
+  This function computes the number of triangles each node participates in. The existing sequential implementation in NetworkX is already optimized using the late neighbors strategy — a node only considers neighbors that appear later in a consistent order. This ensures each triangle is counted exactly once and avoids redundant comparisons. Chunking is preferred over assigning one node per job, as spawning a large number of parallel tasks for each node can introduce significant overhead killing the speedup. Observed speedups are in the range of 1.5 to 2 times the sequential implementation on my 8-core machine. </br>
+  *Currently in progress* (ref. [PR#106](https://github.com/networkx/nx-parallel/pull/106))
+
+- [`clustering`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.cluster.clustering.html#networkx.algorithms.cluster.clustering)
+
+  Computes the clustering coefficient for each node, measuring the tendency of a node’s neighbors to form triangles. The main parallelization strategy chunks the list of nodes and processes each chunk independently (Default chunking). Each worker computes clustering values for its assigned nodes restricted to the chunk. If node degrees are skewed, we might have to tweak the chunking logic. I would have to experiment with this during the implementation to reach a particular conclusion. A potential issue that arises here is that multiple copies of the graph are created during its execution across the cores which would lead to memory inefficiency in large graphs. This would need to be handled. For very small graphs, parallelism overhead may outweigh benefits. 
+
+- [`average_clustering`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.cluster.average_clustering.html)
+
+  Averages the clustering coefficients across all nodes. It utilises the parallel implementation of `clustering`.After obtaining the clustering coefficients, the final step reduces these values by computing their average using a sum and len. To better understand the trade-offs, I plan to experiment with two versions:
+    </br> Both clustering and the sum/len aggregation are done in parallel.
+    </br> Only clustering is parallelized, while aggregation remains sequential. </br>
+  To control whether parallel backend should be used for this function at all, adding the [`should_run`](https://github.com/networkx/nx-parallel/issues/77) parameter here could be helpful.
+
+- `_apply_prediction`
+
+  This internal utility function is the core engine behind most link prediction algorithms in NetworkX. Instead of applying the function sequentially over all edge pairs, the list of node pairs can be chunked, and the prediction function can be executed in parallel on each chunk. Instead of applying parallelism to individual functions like `jaccard_coefficient`, `adamic_adar_index`, `preferential_attachment`etc. Upon implementing the algorithm, I'd like to try and see if reducing the size of default chunking would yield better results since each of the functions that do the work are light-weight.
+
+- [`harmonic_centrality`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.centrality.harmonic_centrality.html)
+
+  Measures the closeness of a node to all other reachable nodes based on the inverse of the shortest-path distances. It would involve computing shortest-path distances from each `source` and updating centrality scores for the relevant targets (`nbunch`). Since each source's computation is independent, the problem is embarrassingly parallel across sources. A default chunking strategy can be applied by dividing the sources into n_jobs chunks and processing them in parallel. After computing partial centrality scores in each job, the results can be aggregated (e.g., using `Counter.update` or dictionary merging) into the final output dictionary.
+
+- [`average_neighbor_degree`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.assortativity.average_neighbor_degree.html) 
+
+  Computes the mean degree of neighbors for each node (source, target). Since each node’s computation is independent, the function is embarrassingly parallel. The list of nodes is chunked and processed in parallel, where each worker computes average neighbor degrees for its chunk. While computation per node is light, spawning one task per node is inefficient — chunking mitigates that. However, since the full graph is passed to each worker, this may result in multiple copies being pickled, leading to memory inefficiency on large graphs. To reduce overhead, I will have to look into incorporating shared-memory strategies on graphs where it would just access the graph from a shared memory (since it is read-only). Adding a `should_run` flag may help manage this trade-off. 
+
+## Optional Extensions (If Time Permits)
+
+- Add these embarassingly parallel algorithms after thorough research.
+  - [`load_centrality`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.centrality.load_centrality.html)
+  - [`eccentricity`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.distance_measures.eccentricity.html)
+- After discussing the scope of adding non-embarassingly parallel algorithms, work on 
+  **Delta-Stepping** : A parallel single-source shortest paths (SSSP) algorithm, a variant of Dijkstra's algorithm, maintaining buckets representing priority ranges of size Δ. </br>
+  *See:* https://www.cs.utexas.edu/~pingali/CS395T/2013fa/papers/delta-stepping.pdf
+
+- Adding user guide tutorials for using nx-parallel. 
 
 ## Project Timeline
 
-| **Period**                              | **Tasks** |
-|-----------------------------------------|-----------|
-| **Week 1** (June 2nd – June 8th)        | - Implement the first algorithm. <br> - Conduct initial tests and performance benchmarks. <br> - Get feedback from mentors. |
-| **Week 2** (June 9th – June 15th)       | - Add the suggestions recommended. <br> - Finish working on the first algorithm. <br> - Research and implement the second algorithm. |
-| **Week 3** (June 16th – June 22nd)      | - Conduct initial tests and performance benchmarks. <br> - Get feedback from mentors. |
-| **Week 4** (June 23rd – June 29th)      | - Add the respective recommendations. <br> - Finish working on the second algorithm. |
-| **Week 5** (June 30th – July 6th)       | - Research and implement the third algorithm. <br> - Conduct initial tests and performance benchmarks. <br> - Get feedback and continue working on the third algorithm. |
-| **Week 6** (July 7th – July 13th)       | - Finish working on the third algorithm. <br> - Buffer week for improvements and debugging. |
-| **Week 7** (Mid-Term Evaluation, July 14th – July 20th) | - Submit progress for mid-term evaluation. <br> - Research and implement the fourth algorithm. |
-| **Week 8** (July 21st – July 27th)      | - Conduct initial tests and performance benchmarks. <br> - Get feedback and finish working on the fourth algorithm. |
-| **Week 9** (July 28th – August 3rd)     | - Research and implement the fifth algorithm. <br> - Conduct initial tests and performance benchmarks. |
-| **Week 10** (August 4th – August 10th)  | - Get feedback and finish working on the fifth algorithm. <br> - Research and implement the sixth algorithm. <br> - Conduct initial tests and performance benchmarks. |
-| **Week 11** (August 11th – August 17th) | - Get feedback and finish working on the sixth algorithm. <br> - Buffer week for improvements and suggestions. |
-| **Week 12** (August 18th – August 24th) | - Research and implement the final algorithm. <br> - Conduct initial tests and performance benchmarks. <br> - Get a review and finish working on the seventh algorithm. |
-| **Final Evaluation** (August 25th – August 31st) | - Conduct final tests to verify the correctness and efficiency of all the algorithms, incorporating any final suggestions and recommendations. <br> - Create a final project report and submit it with all the work done for final review. |
+ **Weeks 1–4**  
+ - Work on the timing script<br> 
+ - Parallel Implementations of `triangles`,  `number_attracting_components`,`number_connected_components`, `number_strongly_connected_components`, `number_weakly_connected_components`.
+
+ **Weeks 5-8**
+ - Parallel Implementations of `clustering`, `average_clustering` and `_apply_prediction` 
+
+ **Weeks 9–12** 
+ - Parallel implementations of `harmonic_centrality`, `average_neighbor_degree`.
+ 
+ Throughout the project, I will also contribute to independent PRs and use review periods to plan and research the next implementation steps.
 
 ## Why NetworkX?
 
