@@ -10,11 +10,11 @@ The following algorithms have been identified as embarrassingly parallel and are
 
 - **Updating timing script**
 
-  Generate consistent heatmaps to visualize performance, and explore shared memory strategies to improve efficiency during parallel execution. (ref. [PR#114](https://github.com/networkx/nx-parallel/pull/114)). 
+  Generate consistent heatmaps to visualize performance, and explore shared memory strategies to improve efficiency during parallel execution (ref. [PR#114](https://github.com/networkx/nx-parallel/pull/114)). 
 
 - [`number_attracting_components`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.components.number_attracting_components.html), [`number_connected_components`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.components.number_connected_components.html), [`number_strongly_connected_components`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.components.number_strongly_connected_components.html), [`number_weakly_connected_components`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.components.number_weakly_connected_components.html)
 
-  The parallelisation approach for these functions mirrors that of `number_of_isolates`. Rather than parallelising the internal logic of itself — which remains sequential — we parallelise the counting step after obtaining the list of attracting components. Since each component is independent, the counting can be parallelised but the processing time of each chunk would be small (only the sum would be computed for each chunk), so chunking would not yield any speedups. Adding a `should_run` parameter here would be beneficial for this reason.
+  The parallelisation approach for these functions mirrors that of `number_of_isolates`. We parallelise the counting step after obtaining the list of the above mentioned types of components. Since each component is independent, the counting can be parallelised but the processing time of each chunk would be small (only the sum would be computed for each chunk), so chunking would not yield any speedups. Adding a `should_run` parameter here would be beneficial.
 
 - [`triangles`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.cluster.triangles.html)
   
@@ -23,18 +23,18 @@ The following algorithms have been identified as embarrassingly parallel and are
 
 - [`clustering`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.cluster.clustering.html#networkx.algorithms.cluster.clustering)
 
-  Computes the clustering coefficient for each node, measuring the tendency of a node’s neighbors to form triangles. The main parallelization strategy chunks the list of nodes and processes each chunk independently (Default chunking). Each worker computes clustering values for its assigned nodes restricted to the chunk. If node degrees are skewed, we might have to tweak the chunking logic. I would have to experiment with this during the implementation to reach a particular conclusion. A potential issue that arises here is that multiple copies of the graph are created during its execution across the cores which would lead to memory inefficiency in large graphs. This would need to be handled. For very small graphs, parallelism overhead may outweigh benefits. 
+  Computes the clustering coefficient for each node, measuring the tendency of a node’s neighbors to form triangles. The main parallelization strategy chunks the list of nodes and processes each chunk independently (Default chunking). Each worker computes clustering values for its assigned nodes restricted to the chunk. If node degrees are skewed, we might have to tweak the chunking logic. I would have to experiment with this during the implementation to reach a particular conclusion. A potential issue that arises here is that multiple copies of the graph are created during its execution across the cores which would lead to memory inefficiency in large graphs. This would need to be handled.  
 
 - [`average_clustering`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.cluster.average_clustering.html)
 
-  Averages the clustering coefficients across all nodes. It utilises the parallel implementation of `clustering`.After obtaining the clustering coefficients, the final step reduces these values by computing their average using a sum and len. To better understand the trade-offs, I plan to experiment with two versions:
+  Averages the clustering coefficients across all nodes. It utilises the parallel implementation of `clustering`.After obtaining the clustering coefficients, the final step reduces these values by computing their average using a sum and len. To understand the trade-offs better, I plan to experiment with two versions:
     </br> Both clustering and the sum/len aggregation are done in parallel.
     </br> Only clustering is parallelized, while aggregation remains sequential. </br>
   To control whether parallel backend should be used for this function at all, adding the [`should_run`](https://github.com/networkx/nx-parallel/issues/77) parameter here could be helpful.
 
 - `_apply_prediction`
 
-  This internal utility function is the core engine behind most link prediction algorithms in NetworkX. Instead of applying the function sequentially over all edge pairs, the list of node pairs can be chunked, and the prediction function can be executed in parallel on each chunk. Instead of applying parallelism to individual functions like `jaccard_coefficient`, `adamic_adar_index`, `preferential_attachment`etc. Upon implementing the algorithm, I'd like to try and see if reducing the size of default chunking would yield better results since each of the functions that do the work are light-weight.
+  This is a function used in most link prediction algorithms in NetworkX. This function applies a particular prediction function respective to different link prediction algorithms on each pair of edges. Instead of applying the function sequentially over all edge pairs, the list of pairs can be chunked, and the prediction function can be executed in parallel on each chunk instead of applying parallelism to individual functions like `jaccard_coefficient`, `adamic_adar_index`, `preferential_attachment`etc. Upon implementing the algorithm, I'd like to try and see if reducing the size of default chunking would yield better results since each of the functions that do the work are light-weight.
 
 - [`harmonic_centrality`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.centrality.harmonic_centrality.html)
 
@@ -42,7 +42,7 @@ The following algorithms have been identified as embarrassingly parallel and are
 
 - [`average_neighbor_degree`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.assortativity.average_neighbor_degree.html) 
 
-  Computes the mean degree of neighbors for each node (source, target). Since each node’s computation is independent, the function is embarrassingly parallel. The list of nodes is chunked and processed in parallel, where each worker computes average neighbor degrees for its chunk. While computation per node is light, spawning one task per node is inefficient — chunking mitigates that. However, since the full graph is passed to each worker, this may result in multiple copies being pickled, leading to memory inefficiency on large graphs. To reduce overhead, I will have to look into incorporating shared-memory strategies on graphs where it would just access the graph from a shared memory (since it is read-only). Adding a `should_run` flag may help manage this trade-off. 
+  Computes the mean degree of neighbors for each node (source, target). Since each node’s computation is independent, the function is embarrassingly parallel. The list of nodes is chunked and processed in parallel, where each worker computes average neighbor degrees for its chunk. While computation per node is light, spawning one task per node is inefficient — chunking mitigates that. However, since the full graph is passed to each worker, this may result in multiple copies being pickled, leading to memory inefficiency on large graphs. To reduce overhead, I will have to look into incorporating shared-memory strategies on graphs where it would just access the graph from a shared memory (since it is read-only). Adding a `should_run` parameter may help manage this trade-off. 
 
 ## Optional Extensions (If Time Permits)
 
