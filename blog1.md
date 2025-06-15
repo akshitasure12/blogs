@@ -1,15 +1,16 @@
 # Blog1 
 ## Week 1-2 (2nd June to 15th June, 2025)
+In the past two weeks, I’ve focused on several key aspects of the project that deepened my understanding of nx-parallel's internals. In this blog, I’ll walk you through the main technical contributions and improvements I worked on during this period.
 
 ### 1. Improving the timing script
 
 The [issue#51](https://github.com/networkx/nx-parallel/issues/51) reports inconsistencies in the timing script. For example, in some cases, the rate of speedup would decrease as the number of nodes increased, or speedups would decrease on increasing the number of cores—behavior that contradicts typical expectations of parallel performance. Normally, parallel algorithms are expected to scale better with larger graphs due to increased workload distribution across cores.
 
-The discussion in the issue suggested switching from time.time(), so I started exploring other timing methods. One reason to avoid time.time() is that, under certain conditions (like clock sync or rounding), it can return a lower value on a subsequent call. More importantly, it lacks the precision needed for benchmarking small, fast functions. I initially considered time.perf_counter() for its high-resolution and monotonic behavior. However, as my mentors pointed out, while perf_counter() is good for single measurements, it doesn't help with repeated trials or outlier filtering. Though system interference can't be entirely removed, better measurement strategies help reduce its impact and give more reliable performance estimates.
+The discussion in the issue suggested switching from `time.time()`, so I started exploring other timing methods. One reason to avoid `time.time()` is that, under certain conditions, it can return a lower value on a subsequent call. More importantly, it lacks the precision needed for benchmarking small, fast functions. I initially considered `time.perf_counter()` for its high-resolution and monotonic behavior. However, as my mentors pointed out, while `perf_counter()` is good for single measurements, it doesn't help with repeated trials or outlier filtering. Though system interference can't be entirely removed, better measurement strategies help reduce its impact and give more reliable performance estimates.
 
-To address this, I switched to Python’s built-in timeit.repeat() function. This is commonly used for benchmarking because it runs code multiple times and helps mitigate system noise.
+To address this, I switched to Python’s `timeit.repeat()` function. This is commonly used for benchmarking because it runs code multiple times and helps mitigate system noise.
 
-In addition to showing speedups, I enhanced the visualizations to also display the actual runtime of the parallel implementation, providing a more complete picture of performance. Since speedup = sequential_time / parallel_time, the sequential runtime can also be estimated by multiplying parallel time with the speedup for comparison. I modularized the script by splitting it into two main functions—one for benchmarking based on function type, and another for plotting heatmaps. I also reduced redundancy in the timing logic and bipartite-specific code. For improved clarity, I added elements to the visualization like a legend and the number of cores used.
+In addition to showing speedups, I enhanced the visualizations to also display the actual runtime of the parallel implementation, providing a more complete picture of performance. Since `speedup=sequential_time / parallel_time`, the sequential runtime can also be estimated by multiplying parallel time with the speedup for comparison. I modularized the script by splitting it into two main functions—one for benchmarking based on function type, and another for plotting heatmaps. I also reduced redundancy in the timing logic and bipartite-specific code. For improved clarity, I added elements to the visualization like a legend and the number of cores used.
 
 To illustrate the improvements, here’s a side-by-side comparison of the previous and updated heatmaps for the `is_reachable` function: 
 <p float="left">
@@ -42,7 +43,7 @@ This was the first algorithm I attempted to implement in parallel, which helped 
 
 ![initial attempt](assets/static/image-5.png)
 
-After spending time debugging without much progress, I reached out to Aditi during one of our meetings. That’s when I realized I hadn’t properly configured the parallel backend in my script, which meant it wasn’t actually running in parallel despite the changes. In the process of investigating this issue, it led me to explore the timing script more deeply and understand how it worked. This eventually made me take up [issue #51](https://github.com/networkx/nx-parallel/issues/51), where I realized that the timing script I was using was quite outdated and could benefit from improvements.
+After spending time debugging without much progress, I reached out to my mentor([@Aditi](https://github.com/Schefflera-Arboricola/)) during one of our meetings. That’s when I realized I hadn’t properly configured the parallel backend in my script, which meant it wasn’t actually running in parallel despite the changes. In the process of investigating this issue, it led me to explore the timing script more deeply and understand how it worked. This eventually made me take up [issue #51](https://github.com/networkx/nx-parallel/issues/51), where I realized that the timing script I was using was quite outdated and could benefit from improvements.
 
 I began working on this during the contribution phase. More recently, I added performance heatmaps to better visualize the speedups, which initially showed gains of around 1.5x–2x. However, after updates to chunks.py (ref. [PR#112](https://github.com/networkx/nx-parallel/pull/112)) the speedups improved to 2x-2.6x.
 
@@ -56,9 +57,9 @@ As part of my plan for the first 4 weeks, I implemented parallel versions of sev
 
 These algorithms follow a common pattern: they compute a list of component subgraphs using the existing NetworkX implementation and then apply parallel processing to count them. Since this counting step is lightweight (i.e., simple aggregation), the potential for large speedups is limited. My reference point for this design was the `number_of_isolates` implementation, which follows a similar parallel counting strategy.
 
-Because these functions are already fast in NetworkX, a should_run mechanism (ref. [issue #77](https://github.com/networkx/nx-parallel/issues/77)) is needed to avoid unnecessary parallel execution. I plan to work on this in the upcoming two weeks.
+Because these functions are already fast in NetworkX, a `should_run` mechanism (ref. [issue #77](https://github.com/networkx/nx-parallel/issues/77)) is needed to avoid unnecessary parallel execution. I plan to work on this in the upcoming two weeks.
 
-While implementing parallel versions of the number_ algorithms, I realized that decorators like`@not_implemented_for("undirected")` or `@not_implemented_for("multigraph")` were missing from nx-parallel implementations. This made me curious. Upon raising [issue #118](https://github.com/networkx/nx-parallel/issues/118), I learned that since these decorators are applied outside the `_dispatchable` wrapper in NetworkX— they don’t need to be redefined in nx-parallel (helps avoid redundancy).
+While implementing parallel versions of the `number_` algorithms, I realized that decorators like`@not_implemented_for("undirected")` or `@not_implemented_for("multigraph")` were missing from nx-parallel implementations. This made me curious. Upon raising [issue #118](https://github.com/networkx/nx-parallel/issues/118), I learned that since these decorators are applied outside the `_dispatchable` wrapper in NetworkX— they don’t need to be redefined in nx-parallel (helps avoid redundancy).
 
 ### 4. Adjacency Matrix based Implementation of `is_reachable()`
 
@@ -66,7 +67,7 @@ In the approach discussed [here](https://github.com/akshitasure12/networkx-blogs
 
 ![hm](assets/static/hm.png)
 
-These results confirmed that switching to a NumPy-based representation would lead to measurable speedups, so the mentors motivated me to propose a NumPy-backed `is_reachable` implementation in NetworkX.
+These results confirmed that switching to a NumPy-based representation would lead to measurable speedups, so my mentors motivated me to propose a NumPy-backed `is_reachable` implementation in NetworkX.
 
 ## Contributions
 
